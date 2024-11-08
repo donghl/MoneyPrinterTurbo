@@ -193,6 +193,49 @@ if not config.app.get("hide_config", False):
                 tr("Hide Log"), value=config.app.get("hide_log", False)
             )
             config.ui["hide_log"] = hide_log
+            # MongoDB配置
+            st.write(tr("MongoDB Settings"))
+            mongo_host = st.text_input(
+                tr("MongoDB Host"), value=config.app.get("mongo_host", "localhost")
+            )
+            config.app["mongo_host"] = mongo_host
+
+            mongo_port = st.number_input(
+                tr("MongoDB Port"),
+                value=int(config.app.get("mongo_port", 27017)),
+                min_value=1,
+                max_value=65535,
+            )
+            config.app["mongo_port"] = mongo_port
+
+            mongo_username = st.text_input(
+                tr("MongoDB Username"),
+                value=config.app.get("mongo_username", ""),
+                type="password",
+            )
+            config.app["mongo_username"] = mongo_username
+
+            mongo_password = st.text_input(
+                tr("MongoDB Password"),
+                value=config.app.get("mongo_password", ""),
+                type="password",
+            )
+            config.app["mongo_password"] = mongo_password
+
+            enable_mongo = st.checkbox(
+                tr("Enable MongoDB"), value=config.app.get("enable_mongo", False)
+            )
+            config.app["enable_mongo"] = enable_mongo
+            mongo_db = st.text_input(
+                tr("MongoDB Database"), value=config.app.get("mongo_db", "moneyprinter")
+            )
+            config.app["mongo_db"] = mongo_db
+
+            mongo_collection = st.text_input(
+                tr("MongoDB Collection"),
+                value=config.app.get("mongo_collection", "tasks"),
+            )
+            config.app["mongo_collection"] = mongo_collection
 
         with middle_config_panel:
             #   openai
@@ -437,6 +480,68 @@ uploaded_files = []
 with left_panel:
     with st.container(border=True):
         st.write(tr("Video Script Settings"))
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(tr("Previous")):
+                if config.app.get("enable_mongo", False):
+                    from pymongo import MongoClient
+                    import pymongo
+
+                    client = MongoClient(
+                        host=config.app.get("mongo_host"),
+                        port=config.app.get("mongo_port"),
+                        username=config.app.get("mongo_username"),
+                        password=config.app.get("mongo_password"),
+                    )
+
+                    db = client[config.app.get("mongo_db")]
+                    collection = db[config.app.get("mongo_collection")]
+
+                    # 获取当前主题
+                    current_title = st.session_state.get("video_subject", "")
+
+                    # 查询比当前主题更新的一条记录
+                    query = {"title": {"$lt": current_title}} if current_title else {}
+                    doc = collection.find_one(
+                        query, sort=[("title", pymongo.DESCENDING)]
+                    )
+
+                    if doc:
+                        st.session_state["video_subject"] = doc.get("title", "")
+                        st.session_state["video_script"] = doc.get("cn_public", "")
+                        st.session_state["video_terms"] = doc.get("keywords", "")
+                        st.rerun()
+
+        with col2:
+            if st.button(tr("Next")):
+                if config.app.get("enable_mongo", False):
+                    from pymongo import MongoClient
+                    import pymongo
+
+                    client = MongoClient(
+                        host=config.app.get("mongo_host"),
+                        port=config.app.get("mongo_port"),
+                        username=config.app.get("mongo_username"),
+                        password=config.app.get("mongo_password"),
+                    )
+
+                    db = client[config.app.get("mongo_db")]
+                    collection = db[config.app.get("mongo_collection")]
+
+                    # 获取当前主题
+                    current_title = st.session_state.get("video_subject", "")
+
+                    # 查询比当前主题更老的一条记录
+                    query = {"title": {"$gt": current_title}} if current_title else {}
+                    doc = collection.find_one(
+                        query, sort=[("title", pymongo.ASCENDING)]
+                    )
+
+                    if doc:
+                        st.session_state["video_subject"] = doc.get("title", "")
+                        st.session_state["video_script"] = doc.get("cn_public", "")
+                        st.session_state["video_terms"] = doc.get("keywords", "")
+                        st.rerun()
         params.video_subject = st.text_input(
             tr("Video Subject"), value=st.session_state["video_subject"]
         ).strip()
